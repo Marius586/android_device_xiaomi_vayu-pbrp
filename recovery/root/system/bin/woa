@@ -1,0 +1,142 @@
+#!/sbin/bash
+p=$1
+function flash(){
+	dd if=${comm[2]} of=/dev/block/by-name/boot bs=16M
+	echo "Flashed succesfully, press any key"
+	read -n 1
+}
+
+
+function flashuefi(){
+cd /sdcard/UEFI
+if [[ -z $(ls /sdcard) ]]; then
+	echo "Storage encrypted, press any key"
+	read -n smh -s
+elif [[ -n $(ls) ]];then
+	if [[ $(ls |wc -l) -eq 1 ]];then
+		comm[2]=$(find /sdcard/UEFI/*.img)
+	else
+		k=0
+		for i in $(find . -maxdepth 1 -type f)
+		do
+			k=$(( k + 1 ))
+			files[$k]=$i
+			echo "$k)$i"
+		done
+		read nr
+		if [[ $nr -gt $k ]]; then
+			echo "You are a moron, aborting"
+			exit 0;
+		else
+			comm[2]=${files[$nr]}
+		fi
+	fi
+	flash
+fi
+}
+
+function flashbootwin(){
+if [[ -z $(find /win/boot.img) ]]; then 
+	echo "boot.img could not be found, press any key"
+	read -n 1
+	menu
+else
+	dd if=$(find /win/boot.img) of=/dev/block/by-name/boot
+	echo "Flashed succesfully, press any key"
+	read -n 1
+fi
+}
+
+function flashbootandr(){
+if [[ -z $(find /sdcard/boot.img) ]]; then
+        echo "boot.img could not be found, press any key"
+        read -n 1
+        menu
+else
+        dd if=$(find /sdcard/boot.img) of=/dev/block/by-name/boot
+	echo "Flashed succesfully, press any key"
+	read -n 1
+fi
+}
+
+function backwin(){
+	dd bs=16M if=/dev/block/by-name/boot of=/win/boot.img
+	echo "Backup succesfully, press any key"
+	read -n 1
+}
+
+function backandr(){
+	dd bs=16M if=/dev/block/by-name/boot of=/sdcard/boot.img
+	echo "Backup succesfullt, press any key"
+	read -n 1
+}
+
+function modem(){
+	dd bs=16M if=/dev/block/by-name/modemst1 of=/mnt/sdcard/Windows/Windows/System32/DriverStore/FileRepository/qcremotefs8150.inf_arm64_04af705613ed2d36/bootmodem_fs1
+	dd bs=16M if=/dev/block/by-name/modemst2 of=/mnt/sdcard/Windows/Windows/System32/DriverStore/FileRepository/qcremotefs8150.inf_arm64_04af705613ed2d36/bootmodem_fs2
+	echo "Modem provisioned succesfully, press any key"
+	read -n 1
+}
+
+function sensor(){
+	rm -rf /win/Windows/System32/drivers/DriverData/QUALCOMM/fastRPC/persist/sensors
+	cp -r /persist/sensors /win/Windows/System32/drivers/DriverData/QUALCOMM/fastRPC/persist/sensors
+	echo "Sensors provisioned succesfully, press any key"
+	read -n 1
+}
+
+function help(){
+echo "stupid, press any key"
+read -n 1
+}
+
+function splash(){
+echo "
+__        __        _            ____  _      ___ 
+\ \      / /___    / \          / ___|| |    |_ _|
+ \ \ /\ / // _ \  / _ \  _____ | |    | |     | | 
+  \ V  V /| (_) |/ ___ \|_____|| |___ | |___  | | 
+   \_/\_/  \___//_/   \_\       \____||_____||___|
+                                                  
+"
+}
+
+menu(){
+	clear
+	splash
+	echo "
+	1)flash uefi
+	2)flash boot.img from Windows
+	3)flash boot.img from Android
+	4)backup boot.img to Windows
+	5)backup boot.img to Android
+	6)dump modem
+	7)dump sensors
+	0)reboot
+	q)exit
+	?)help
+"
+	if [[ -z $p ]]; then
+		read a;
+	else
+		a=$p
+		p="";
+	fi
+	clear
+	splash
+	case $a in
+		1)flashuefi;menu;;
+		2)flashbootwin;menu;;
+		3)flashbootandr;menu;;
+		4)backwin;menu;;
+		5)backandr;menu;;
+		6)modem;menu;;
+		7)sensor;menu;;
+		0)reboot;;
+		q)exit 0;;
+		?)help;menu;;
+		*)menu;;
+	esac
+}
+
+menu
